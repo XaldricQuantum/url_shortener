@@ -63,37 +63,40 @@ app.use(express.urlencoded({extended: true}));
 
 app.post('/api/shorturl', async (req, res) => {
     const url = req.body.url;
-    console.log(url);
+    // console.log(url);
     const isUrlOk = await checkDomainExist(url);
     console.log("domain status check", isUrlOk);
     if (!isUrlOk) {
         return res.json({ error: 'invalid url' });
     };
     try {
-
         const savedUrl = await saveUrl(url);
         console.log("saved Url: ", savedUrl);
-        
         return res.json({ originalUrl: savedUrl.originalUrl, shortUrl: savedUrl.shortId})
     } catch (err) {
         console.log("cannot save url, err: ", err);
-        
         return res.json({error: "Failed to save URL"})
     }
-
-    
-    // res.json({url: url, valid: await checkDomainExist(url)})
-    
 })
 
 app.get('/api/shorturl/:number' , async (req, res) => {
-    const requestedUrl = await Url.findOne({shortId: req.params.number});
-    if (requestedUrl) {
-        return res.redirect(requestedUrl.originalUrl)
-    } else {
-        return res.json({error: "No short URL found for the given input"})
+    const number = req.params.number;
+    if (!number) {
+        return res.json({error: "Invalid input"})
     }
-    return res.json({number: req.params.number})
+    try {
+        const requestedUrl = await Url.findOne({shortId: number});
+        if (requestedUrl) {
+            return res.redirect(requestedUrl.originalUrl)
+        } else {
+            return res.json({error: "No short URL found for the given input"})
+        }
+    } catch (err) {
+        console.log("error invalid input: ", err);
+        return res.json({error: "Invalid input"})
+        
+    }
+    
 })
 
 const saveUrl = async (inputUrl) => {
@@ -117,9 +120,15 @@ const saveUrl = async (inputUrl) => {
         console.log("new url: ", newUrl);
         
         // console.log(await newUrl.save());
-        await newUrl.save();
-        console.log("new URL saved: ", newUrl);
-        return newUrl;
+        try {
+            await newUrl.save();
+            console.log("new URL saved: ", newUrl);
+            return newUrl;
+        }catch (err) {
+            console.log("save error: ", err);
+            
+            return null;
+        }
     } catch (err) {
         console.error("Error saving URL: ", err);
         return null;
