@@ -1,0 +1,7 @@
+/node_modules   # Ignore node_modules directory
+node_modules/
+node_modules
+/dist           # Ignore dist directory
+/logs/         # Ignore logs directory (trailing slash is optional)
+.env
+.env

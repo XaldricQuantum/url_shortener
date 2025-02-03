@@ -8,7 +8,7 @@ const app = express();
 // const mongoose = require('mongoose')
 import dns from 'dns'
 import mongoose from 'mongoose';
-import { hostname } from 'os';
+import Url from './models/urlModel.js';
 
 function checkDomainExist(url) {
 
@@ -17,15 +17,17 @@ function checkDomainExist(url) {
         let hostName;
         try {
             hostName = new URL(url).hostname;
-            console.log(hostName);
+            console.log("20: ", hostName);
             
         } catch (err) {
+            console.log("23: ", err);
+            
             return resolve(false);
         }
         console.log(`Checking DNS for: ${hostName}`);
         dns.lookup(hostName, (err) => {
             if (err) {
-                console.log(err);
+                console.log("dns lookup fail: ", err);
                 return resolve(false);
             };
             console.log("DNS OK");
@@ -62,11 +64,69 @@ app.use(express.urlencoded({extended: true}));
 app.post('/api/shorturl', async (req, res) => {
     const url = req.body.url;
     console.log(url);
-    console.log(await checkDomainExist(url));
+    const isUrlOk = await checkDomainExist(url);
+    console.log("domain status check", isUrlOk);
+    if (!isUrlOk) {
+        return res.json({ error: 'invalid url' });
+    };
+    try {
+
+        const savedUrl = await saveUrl(url);
+        console.log("saved Url: ", savedUrl);
+        
+        return res.json({ originalUrl: savedUrl.originalUrl, shortUrl: savedUrl.shortId})
+    } catch (err) {
+        console.log("cannot save url, err: ", err);
+        
+        return res.json({error: "Failed to save URL"})
+    }
+
     
-    res.json({url: url, valid: await checkDomainExist(url)})
+    // res.json({url: url, valid: await checkDomainExist(url)})
     
 })
+
+app.get('/api/shorturl/:number' , async (req, res) => {
+    const requestedUrl = await Url.findOne({shortId: req.params.number});
+    if (requestedUrl) {
+        return res.redirect(requestedUrl.originalUrl)
+    } else {
+        return res.json({error: "No short URL found for the given input"})
+    }
+    return res.json({number: req.params.number})
+})
+
+const saveUrl = async (inputUrl) => {
+    let newUrl
+    try {
+        const existingUrl = await Url.findOne({originalUrl: inputUrl});
+        console.log("existing url", existingUrl);
+        
+        if (existingUrl) {
+            console.log("URL already saved");
+            return existingUrl;
+        }
+
+        // If the URL is new , assign short ID
+        const lastUrl = await Url.findOne().sort({shortId: -1});
+        const newShortId = lastUrl ? lastUrl.shortId + 1 : 1;
+        console.log("new shortId: ", newShortId);
+        
+        // Create new record for new url
+        newUrl = new Url({ originalUrl: inputUrl, shortId: newShortId});
+        console.log("new url: ", newUrl);
+        
+        // console.log(await newUrl.save());
+        await newUrl.save();
+        console.log("new URL saved: ", newUrl);
+        return newUrl;
+    } catch (err) {
+        console.error("Error saving URL: ", err);
+        return null;
+        
+    }
+}
+
 
 app.listen(port, function() {
   console.log(`Listening on port ${port}`);
