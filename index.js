@@ -63,7 +63,7 @@ app.use(express.urlencoded({extended: true}));
 
 app.post('/api/shorturl', async (req, res) => {
     const url = req.body.url;
-    // console.log(url);
+    console.log(url);
     const isUrlOk = await checkDomainExist(url);
     console.log("domain status check", isUrlOk);
     if (!isUrlOk) {
@@ -93,7 +93,7 @@ app.get('/api/shorturl/:number' , async (req, res) => {
         }
     } catch (err) {
         console.log("error invalid input: ", err);
-        return res.json({error: "Invalid input"})
+        return res.json({error: "Wrong format"})
         
     }
     
